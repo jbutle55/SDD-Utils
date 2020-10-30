@@ -2,10 +2,11 @@ import os
 import subprocess
 import numpy as np
 import random
-import cPickle
+import pickle
 import cv2
 import math
 import xml.etree.cElementTree as ET
+import json
 
 
 def assert_path(path, error_message):
@@ -51,7 +52,7 @@ def log(message, level='info'):
         'GREEN': '\033[92m',
         'END': '\033[0m',
     }
-    print ('{GREEN}<'+level+'>{END}\t' + message).format(**formatters)
+    print(message)
 
 
 def write_to_file(filename, content):
@@ -86,11 +87,11 @@ def annotate_frames(sdd_annotation_file, dest_path, filename_prefix, number_of_f
     pickle_file = os.path.join(destination_path, 'pickle_store', filename_prefix + 'annotation.pkl')
     if os.path.exists(pickle_file):
         with open(pickle_file, 'rb') as fid:
-            sdd_annotation = cPickle.load(fid)
+            sdd_annotation = pickle.load(fid)
     else:
         sdd_annotation = np.genfromtxt(sdd_annotation_file, delimiter=' ', dtype=np.str)
         with open(pickle_file, 'wb') as fid:
-            cPickle.dump(sdd_annotation, fid)
+            pickle.dump(sdd_annotation, fid)
 
     # Create VOC style annotation.
     first_image_path = os.path.join(destination_path, 'JPEGImages', filename_prefix+'1.jpg')
@@ -126,6 +127,76 @@ def annotate_frames(sdd_annotation_file, dest_path, filename_prefix, number_of_f
 
         xml_annotation = ET.ElementTree(annotation)
         xml_annotation.write(os.path.join(dest_path, filename_prefix + str(frame_number) + ".xml"))
+
+
+def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number_of_frames):
+
+    jpeg_ids = {'Pedestrian': 0,
+                'Biker': 1,
+                'Cart': 2,
+                'Skater': 3,
+                'Bus': 4,
+                'Car': 5}
+
+    # Pickle the actual SDD annotation
+    pickle_file = os.path.join(destination_path, 'pickle_store', filename_prefix + 'annotation.pkl')
+    if os.path.exists(pickle_file):
+        with open(pickle_file, 'rb') as fid:
+            sdd_annotation = pickle.load(fid)
+    else:
+        sdd_annotation = np.genfromtxt(sdd_annotation_file, delimiter=' ', dtype=np.str)
+        with open(pickle_file, 'wb') as fid:
+            pickle.dump(sdd_annotation, fid)
+
+    # Create COCO style annotation.
+    first_image_path = os.path.join(destination_path, 'JPEGImages', filename_prefix+'1.jpg')
+    assert_path(first_image_path, 'Cannot find the images. Trying to access: ' + first_image_path)
+    first_image = cv2.imread(first_image_path)
+    height, width, depth = first_image.shape
+
+    coco = dict()
+    coco['info'] = []
+    coco['info'].append({'description': 'Standford UAV Dataset'})
+    coco['images'] = []
+    coco['annotations'] = []
+
+    coco['categories'] = [{'id': 0, 'name': 'Pedestrian'},
+                          {'id': 1, 'name': 'Biker'},
+                          {'id': 2, 'name': 'Cart'},
+                          {'id': 3, 'name': 'Skater'},
+                          {'id': 4, 'name': 'Bus'},
+                          {'id': 5, 'name': 'Car'}]
+
+    for frame_number in range(1, number_of_frames + 1):
+        img = dict()
+        # Image info
+        img['id'] = frame_number
+        img['width'] = width
+        img['height'] = height
+        img['depth'] = depth
+        img['filename'] = filename_prefix + str(frame_number)
+
+        coco['images'].append(img)
+
+        annotations_in_frame = sdd_annotation[sdd_annotation[:, 5] == str(frame_number)]
+
+        for annotation_data in annotations_in_frame:
+            annots = dict()
+            category = annotation_data[9].replace('"', '')
+
+            # annots['id'] = ''  # ID of unique object
+            annots['category_id'] = jpeg_ids[category]  # Category class
+
+            box_width = abs(int(annotation_data[3]) - int(annotation_data[1]))
+            box_height = abs(int(annotation_data[4]) - int(annotation_data[2]))
+            annots['bbox'] = [annotation_data[1], annotation_data[2], box_width, box_height]
+            annots['occluded'] = annotation_data[7]
+
+            coco['annotations'].append(annots)
+
+    with open(os.path.join(dest_path, filename_prefix + '.json'), 'w') as jfile:
+        json.dump(coco, jfile, indent=4)
+        jfile.close()
 
 
 def calculate_share(num_training_images, num_val_images, num_testing_images):
@@ -174,7 +245,7 @@ def split_dataset_uniformly(number_of_frames, split_ratio, share, file_name_pref
             write_to_file(os.path.join(destination_path, 'ImageSets', 'Main', 'test.txt'), file_name_prefix + str(index))
 
 
-def split_and_annotate(num_training_images=None, num_val_images=None, num_testing_images=None):
+def split_and_annotate(num_training_images=None, num_val_images=None, num_testing_images=None, json_annot=False):
     assert_path(dataset_path, ''.join(e for e in dataset_path if e.isalnum()) + ' folder should be found in the cwd of this script.')
     init_directories()
     if num_training_images is not None and num_val_images is not None and num_testing_images is not None:
@@ -209,7 +280,10 @@ def split_and_annotate(num_training_images=None, num_val_images=None, num_testin
                                                      'Trying to access ' + sdd_annotation_file)
                     dest_path = os.path.join(destination_path, 'Annotations')
                     number_of_frames = count_files(jpeg_image_path, image_name_prefix)
-                    annotate_frames(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+                    if json_annot is False:
+                        annotate_frames(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+                    elif json_annot is True:
+                        annotate_frames_json(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
                     log('Annotation Complete.')
 
                 else:
@@ -250,22 +324,30 @@ if __name__ == '__main__':
     #                           'quad': {0: (.5, .2, .3)}}
 
     # Uniform Sub Sampling : Split should contain only 0 / 1
-    videos_to_be_processed = {'bookstore': {1: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
-                              'coupa': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
-                              'deathCircle': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
-                              'gates': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
-                              'hyang': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
-                              'little': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
-                              'nexus': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
-                              'quad': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)}}
+    # videos_to_be_processed = {'bookstore': {1: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
+    #                           'coupa': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
+    #                           'deathCircle': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
+    #                           'gates': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
+    #                           'hyang': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
+    #                           'little': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
+    #                           'nexus': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)},
+    #                           'quad': {0: (1, 0, 0), 2: (0, 1, 0), 3: (0, 0, 1)}}
 
-    num_training_images = 40000
-    num_val_images = 10000
-    num_testing_images = 20000
+    videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
 
-    dataset_path = './StanfordDroneDataset'
+    num_training_images = 7
+    num_val_images = 2
+    num_testing_images = 1
+
+    dataset_path = '/data2/DATA_justin/stanford_dataset'
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
+    annotation_type = 'json'
+    # annotation_type = 'xml'
+
     # split_and_annotate()
-    split_and_annotate(num_training_images, num_val_images, num_testing_images)
+    if annotation_type == 'xml':
+        split_and_annotate(num_training_images, num_val_images, num_testing_images)
+    if annotation_type == 'json':
+        split_and_annotate(num_training_images, num_val_images, num_testing_images, json_annot=True)
