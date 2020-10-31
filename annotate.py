@@ -27,10 +27,11 @@ def touch(fname, times=None):
 def init_directories():
     # Setup the directory structure.
     if not os.path.exists(destination_path):
-        os.makedirs(os.path.join(destination_path, 'JPEGImages'))
+        os.makedirs(os.path.join(destination_path, 'images'))
         os.makedirs(os.path.join(destination_path, 'ImageSets', 'Main'))
         os.makedirs(os.path.join(destination_path, 'Annotations'))
         os.makedirs(os.path.join(destination_path, 'pickle_store'))
+        os.makedirs(os.path.join(destination_path, 'labels'))
 
     # Flush the train-val-test split. A new split will be created each time this script is run.
     for f in os.listdir(os.path.join(destination_path, 'ImageSets', 'Main')):
@@ -44,7 +45,7 @@ def init_directories():
 
 
 def split_video(video_file, image_name_prefix):
-    return subprocess.check_output('ffmpeg -i ' + os.path.abspath(video_file) + ' '+ image_name_prefix +'%d.jpg', shell=True, cwd=os.path.join(destination_path, 'JPEGImages'))
+    return subprocess.check_output('ffmpeg -i ' + os.path.abspath(video_file) + ' '+ image_name_prefix +'%d.jpg', shell=True, cwd=os.path.join(destination_path, 'images'))
 
 
 def log(message, level='info'):
@@ -94,7 +95,7 @@ def annotate_frames(sdd_annotation_file, dest_path, filename_prefix, number_of_f
             pickle.dump(sdd_annotation, fid)
 
     # Create VOC style annotation.
-    first_image_path = os.path.join(destination_path, 'JPEGImages', filename_prefix+'1.jpg')
+    first_image_path = os.path.join(destination_path, 'images', filename_prefix+'1.jpg')
     assert_path(first_image_path, 'Cannot find the images. Trying to access: ' + first_image_path)
     first_image = cv2.imread(first_image_path)
     height, width, depth = first_image.shape
@@ -149,7 +150,7 @@ def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number
             pickle.dump(sdd_annotation, fid)
 
     # Create COCO style annotation.
-    first_image_path = os.path.join(destination_path, 'JPEGImages', filename_prefix+'1.jpg')
+    first_image_path = os.path.join(destination_path, 'images', filename_prefix+'1.jpg')
     assert_path(first_image_path, 'Cannot find the images. Trying to access: ' + first_image_path)
     first_image = cv2.imread(first_image_path)
     height, width, depth = first_image.shape
@@ -199,6 +200,57 @@ def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number
         jfile.close()
 
 
+def annotate_frames_txt(sdd_annotation_file, dest_path, filename_prefix, number_of_frames):
+
+    jpeg_ids = {'Pedestrian': 0,
+                'Biker': 1,
+                'Cart': 2,
+                'Skater': 3,
+                'Bus': 4,
+                'Car': 5}
+
+    # Pickle the actual SDD annotation
+    pickle_file = os.path.join(destination_path, 'pickle_store', filename_prefix + 'annotation.pkl')
+    if os.path.exists(pickle_file):
+        with open(pickle_file, 'rb') as fid:
+            sdd_annotation = pickle.load(fid)
+    else:
+        sdd_annotation = np.genfromtxt(sdd_annotation_file, delimiter=' ', dtype=np.str)
+        with open(pickle_file, 'wb') as fid:
+            pickle.dump(sdd_annotation, fid)
+
+    # Create COCO style annotation.
+    first_image_path = os.path.join(destination_path, 'images', filename_prefix+'1.jpg')
+    assert_path(first_image_path, 'Cannot find the images. Trying to access: ' + first_image_path)
+    first_image = cv2.imread(first_image_path)
+    height, width, depth = first_image.shape
+
+    for frame_number in range(1, number_of_frames + 1):
+        annotations_in_frame = sdd_annotation[sdd_annotation[:, 5] == str(frame_number)]
+        filename = filename_prefix + str(frame_number) + '.txt'
+
+        with open(os.path.join(dest_path, filename), 'w') as fout:
+            for annotation_data in annotations_in_frame:
+                category = annotation_data[9].replace('"', '')
+
+                box_width = abs(int(annotation_data[3]) - int(annotation_data[1]))
+                box_height = abs(int(annotation_data[4]) - int(annotation_data[2]))
+
+                x_center = int(annotation_data[1]) + (box_width / 2)
+                y_center = int(annotation_data[2]) + (box_height / 2)
+
+                box_width = box_width / width  # Normalize
+                box_height = box_height / height  # Normalize
+
+                x_center = x_center / width  # Normalize
+                y_center = y_center / height  # Normalize
+
+                fout.write('{} {} {} {} {}\n'.format(jpeg_ids[category], x_center, y_center, box_width, box_height))
+            fout.close()
+
+    return
+
+
 def calculate_share(num_training_images, num_val_images, num_testing_images):
     # Returns how many frame should be each videos in train/val/test sets.
     train_videos = 0
@@ -245,7 +297,8 @@ def split_dataset_uniformly(number_of_frames, split_ratio, share, file_name_pref
             write_to_file(os.path.join(destination_path, 'ImageSets', 'Main', 'test.txt'), file_name_prefix + str(index))
 
 
-def split_and_annotate(num_training_images=None, num_val_images=None, num_testing_images=None, json_annot=False):
+def split_and_annotate(num_training_images=None, num_val_images=None, num_testing_images=None,
+                       json_annot=False, txt_annot=False):
     assert_path(dataset_path, ''.join(e for e in dataset_path if e.isalnum()) + ' folder should be found in the cwd of this script.')
     init_directories()
     if num_training_images is not None and num_val_images is not None and num_testing_images is not None:
@@ -263,7 +316,7 @@ def split_and_annotate(num_training_images=None, num_val_images=None, num_testin
 
                 # Split video into frames
                 # Check whether the video has already been made into frames
-                jpeg_image_path = os.path.join(destination_path, 'JPEGImages')
+                jpeg_image_path = os.path.join(destination_path, 'images')
                 image_name_prefix = scene + '_video' + str(video_index) + '_'
                 video_file = os.path.join(video_path, 'video.mov')
                 if count_files(jpeg_image_path, image_name_prefix) == 0:
@@ -280,10 +333,14 @@ def split_and_annotate(num_training_images=None, num_val_images=None, num_testin
                                                      'Trying to access ' + sdd_annotation_file)
                     dest_path = os.path.join(destination_path, 'Annotations')
                     number_of_frames = count_files(jpeg_image_path, image_name_prefix)
-                    if json_annot is False:
+                    if json_annot is False and txt_annot is False:
                         annotate_frames(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
                     elif json_annot is True:
                         annotate_frames_json(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+                    elif txt_annot is True:
+                        dest_path = os.path.join(destination_path, 'labels')
+                        annotate_frames_txt(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+
                     log('Annotation Complete.')
 
                 else:
@@ -338,19 +395,25 @@ if __name__ == '__main__':
                                         6: (1, 0, 0), 7: (1, 0, 0), 8: (1, 0, 0),
                                         9: (1, 0, 0), 10: (1, 0, 0), 11: (0, 0, 1)}}
 
+    videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
+
     num_training_images = 40000
     num_val_images = 10000
     num_testing_images = 2000
 
-    dataset_path = '/data2/DATA_justin/stanford_dataset'
+    #dataset_path = '/data2/DATA_justin/stanford_dataset'
+    dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
-    annotation_type = 'json'
+    # annotation_type = 'json'
     # annotation_type = 'xml'
+    annotation_type = 'txt'
 
     # split_and_annotate()
     if annotation_type == 'xml':
         split_and_annotate(num_training_images, num_val_images, num_testing_images)
     if annotation_type == 'json':
         split_and_annotate(num_training_images, num_val_images, num_testing_images, json_annot=True)
+    if annotation_type == 'txt':
+        split_and_annotate(num_training_images, num_val_images, num_testing_images, json_annot=False, txt_annot=True)
