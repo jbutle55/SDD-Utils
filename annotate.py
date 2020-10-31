@@ -233,6 +233,15 @@ def annotate_frames_txt(sdd_annotation_file, dest_path, filename_prefix, number_
             for annotation_data in annotations_in_frame:
                 category = annotation_data[9].replace('"', '')
 
+                if int(annotation_data[1]) < 0:
+                    annotation_data[1] = '0'
+                if int(annotation_data[3]) > width:
+                    annotation_data[3] = str(width)
+                if int(annotation_data[2]) < 0:
+                    annotation_data[2] = '0'
+                if int(annotation_data[4]) > height:
+                    annotation_data[4] = str(height)
+
                 box_width = abs(int(annotation_data[3]) - int(annotation_data[1]))
                 box_height = abs(int(annotation_data[4]) - int(annotation_data[2]))
 
@@ -395,14 +404,14 @@ if __name__ == '__main__':
                                         6: (1, 0, 0), 7: (1, 0, 0), 8: (1, 0, 0),
                                         9: (1, 0, 0), 10: (1, 0, 0), 11: (0, 0, 1)}}
 
-    #videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
+    videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
 
     num_training_images = 40000
     num_val_images = 10000
     num_testing_images = 2000
 
-    dataset_path = '/data2/DATA_justin/stanford_dataset'
-    #dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
+    #dataset_path = '/data2/DATA_justin/stanford_dataset'
+    dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
