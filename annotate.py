@@ -404,14 +404,14 @@ if __name__ == '__main__':
                                         6: (1, 0, 0), 7: (1, 0, 0), 8: (1, 0, 0),
                                         9: (1, 0, 0), 10: (1, 0, 0), 11: (0, 0, 1)}}
 
-    videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
+    #videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
 
     num_training_images = 40000
     num_val_images = 10000
     num_testing_images = 2000
 
-    #dataset_path = '/data2/DATA_justin/stanford_dataset'
-    dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
+    dataset_path = '/data2/DATA_justin/stanford_dataset'
+    #dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
