@@ -342,13 +342,11 @@ def split_and_annotate(num_training_images=None, num_val_images=None, num_testin
                                                      'Trying to access ' + sdd_annotation_file)
                     dest_path = os.path.join(destination_path, 'Annotations')
                     number_of_frames = count_files(jpeg_image_path, image_name_prefix)
-                    if json_annot is False and txt_annot is False:
-                        annotate_frames(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
-                    elif json_annot is True:
-                        annotate_frames_json(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
-                    elif txt_annot is True:
-                        dest_path = os.path.join(destination_path, 'labels')
-                        annotate_frames_txt(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+                    # Create xml, json and txt annotations
+                    annotate_frames(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+                    annotate_frames_json(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+                    dest_path = os.path.join(destination_path, 'labels')
+                    annotate_frames_txt(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
 
                     log('Annotation Complete.')
 
@@ -415,14 +413,5 @@ if __name__ == '__main__':
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
-    annotation_type = 'json'
-    #annotation_type = 'xml'
-    #annotation_type = 'txt'
-
     # split_and_annotate()
-    if annotation_type == 'xml':
-        split_and_annotate(num_training_images, num_val_images, num_testing_images)
-    if annotation_type == 'json':
-        split_and_annotate(num_training_images, num_val_images, num_testing_images, json_annot=True)
-    if annotation_type == 'txt':
-        split_and_annotate(num_training_images, num_val_images, num_testing_images, json_annot=False, txt_annot=True)
+    split_and_annotate(num_training_images, num_val_images, num_testing_images)
