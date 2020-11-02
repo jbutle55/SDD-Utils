@@ -415,9 +415,9 @@ if __name__ == '__main__':
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
-    # annotation_type = 'json'
-    # annotation_type = 'xml'
-    annotation_type = 'txt'
+    annotation_type = 'json'
+    #annotation_type = 'xml'
+    #annotation_type = 'txt'
 
     # split_and_annotate()
     if annotation_type == 'xml':
