@@ -30,6 +30,7 @@ def init_directories():
         os.makedirs(os.path.join(destination_path, 'images'))
         os.makedirs(os.path.join(destination_path, 'ImageSets', 'Main'))
         os.makedirs(os.path.join(destination_path, 'Annotations'))
+        os.makedirs(os.path.join(destination_path, 'Annotations_json'))
         os.makedirs(os.path.join(destination_path, 'pickle_store'))
         os.makedirs(os.path.join(destination_path, 'labels'))
 
@@ -344,7 +345,8 @@ def split_and_annotate(num_training_images=None, num_val_images=None, num_testin
                     number_of_frames = count_files(jpeg_image_path, image_name_prefix)
                     # Create xml, json and txt annotations
                     annotate_frames(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
-                    annotate_frames_json(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
+                    dest_path_json = os.path.join(destination_path, 'Annotations_json')
+                    annotate_frames_json(sdd_annotation_file, dest_path_json, image_name_prefix, number_of_frames)
                     dest_path = os.path.join(destination_path, 'labels')
                     annotate_frames_txt(sdd_annotation_file, dest_path, image_name_prefix, number_of_frames)
 
