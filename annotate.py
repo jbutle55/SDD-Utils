@@ -169,6 +169,8 @@ def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number
                           {'id': 4, 'name': 'Bus'},
                           {'id': 5, 'name': 'Car'}]
 
+    prev_max_id = 0  # To ensure unique annotation IDs
+
     for frame_number in range(1, number_of_frames + 1):
         img = dict()
         # Image info
@@ -176,25 +178,28 @@ def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number
         img['width'] = width
         img['height'] = height
         img['depth'] = depth
-        img['filename'] = filename_prefix + str(frame_number)
+        img['file_name'] = filename_prefix + str(frame_number) + '.jpg'
 
         coco['images'].append(img)
 
         annotations_in_frame = sdd_annotation[sdd_annotation[:, 5] == str(frame_number)]
 
-        for annotation_data in annotations_in_frame:
+        for count, annotation_data in enumerate(annotations_in_frame, prev_max_id):
             annots = dict()
             category = annotation_data[9].replace('"', '')
 
-            # annots['id'] = ''  # ID of unique object
-            annots['category_id'] = jpeg_ids[category]  # Category class
+            annots['id'] = int(frame_number) + count  # ID of unique object
+            annots['image_id'] = frame_number
+            annots['category_id'] = int(jpeg_ids[category])  # Category class
 
-            box_width = abs(int(annotation_data[3]) - int(annotation_data[1]))
-            box_height = abs(int(annotation_data[4]) - int(annotation_data[2]))
-            annots['bbox'] = [annotation_data[1], annotation_data[2], box_width, box_height]
+            box_width = abs(float(annotation_data[3]) - float(annotation_data[1]))
+            box_height = abs(float(annotation_data[4]) - float(annotation_data[2]))
+            annots['bbox'] = [float(annotation_data[1]), float(annotation_data[2]), box_width, box_height]
             annots['occluded'] = annotation_data[7]
 
             coco['annotations'].append(annots)
+
+            prev_max_id = count
 
     with open(os.path.join(dest_path, filename_prefix + '.json'), 'w') as jfile:
         json.dump(coco, jfile, indent=4)
@@ -404,14 +409,14 @@ if __name__ == '__main__':
                                         6: (1, 0, 0), 7: (1, 0, 0), 8: (1, 0, 0),
                                         9: (1, 0, 0), 10: (1, 0, 0), 11: (0, 0, 1)}}
 
-    #videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
+    videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
 
     num_training_images = 40000
     num_val_images = 10000
     num_testing_images = 2000
 
     dataset_path = '/data2/DATA_justin/stanford_dataset'
-    #dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
+    dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
