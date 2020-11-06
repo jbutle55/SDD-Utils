@@ -195,12 +195,17 @@ def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number
             box_width = abs(float(annotation_data[3]) - float(annotation_data[1]))
             box_height = abs(float(annotation_data[4]) - float(annotation_data[2]))
             annots['bbox'] = [float(annotation_data[1]), float(annotation_data[2]), box_width, box_height]
-            annots['occluded'] = annotation_data[7]
+            annots['iscrowd'] = annotation_data[7]
 
             coco['annotations'].append(annots)
 
             prev_max_id = count
 
+                # Create tiny test dataset
+        if frame_number == 10:
+            with open(os.path.join(dest_path, filename_prefix + 'tiny' + '.json'), 'w') as jfile:
+                json.dump(coco, jfile, indent=4)
+                jfile.close()
     with open(os.path.join(dest_path, filename_prefix + '.json'), 'w') as jfile:
         json.dump(coco, jfile, indent=4)
         jfile.close()
@@ -409,14 +414,14 @@ if __name__ == '__main__':
                                         6: (1, 0, 0), 7: (1, 0, 0), 8: (1, 0, 0),
                                         9: (1, 0, 0), 10: (1, 0, 0), 11: (0, 0, 1)}}
 
-    #videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
+    videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
 
     num_training_images = 40000
     num_val_images = 10000
     num_testing_images = 2000
 
     dataset_path = '/data2/DATA_justin/stanford_dataset'
-    #dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
+    dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
 
