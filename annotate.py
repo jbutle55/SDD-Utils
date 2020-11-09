@@ -195,7 +195,9 @@ def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number
             box_width = abs(float(annotation_data[3]) - float(annotation_data[1]))
             box_height = abs(float(annotation_data[4]) - float(annotation_data[2]))
             annots['bbox'] = [float(annotation_data[1]), float(annotation_data[2]), box_width, box_height]
-            annots['iscrowd'] = annotation_data[7]
+            #annots['iscrowd'] = annotation_data[7]
+            annots['iscrowd'] = 0
+            annots['bbox_mode'] = 1
 
             coco['annotations'].append(annots)
 
