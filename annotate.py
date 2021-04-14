@@ -204,7 +204,7 @@ def annotate_frames_json(sdd_annotation_file, dest_path, filename_prefix, number
 
             prev_max_id = count
 
-                # Create tiny test dataset
+        # Create tiny test dataset
         if frame_number == 10:
             with open(os.path.join(dest_path, filename_prefix + 'tiny' + '.json'), 'w') as jfile:
                 json.dump(coco, jfile, indent=4)
@@ -415,13 +415,9 @@ if __name__ == '__main__':
     videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (1, 0, 0), 2: (1, 0, 0),
                                         3: (1, 0, 0), 4: (1, 0, 0), 5: (1, 0, 0),
                                         6: (1, 0, 0), 7: (1, 0, 0), 8: (1, 0, 0),
-                                        9: (1, 0, 0), 10: (1, 0, 0), 11: (1, 0, 0)},
-                              'gates': {0: (1, 0, 0), 1: (1, 0, 0), 2: (1, 0, 0),
-                                        3: (1, 0, 0), 4: (1, 0, 0), 5: (1, 0, 0),
-                                        6: (1, 0, 0), 7: (1, 0, 0), 8: (1, 0, 0)},
+                                        9: (0, 0, 1), 10: (0, 0, 1), 11: (0, 0, 1)},
                               'deathCircle': {0: (0, 1, 0), 1: (0, 1, 0), 2: (0, 1, 0),
-                                              3: (0, 1, 0), 4: (0, 1, 0)},
-                              'bookstore': {1: (0, 0, 1)}}
+                                              3: (0, 1, 0), 4: (0, 1, 0)}}
 
     #videos_to_be_processed = {'nexus': {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}}
 
@@ -429,7 +425,7 @@ if __name__ == '__main__':
     num_val_images = 10000
     num_testing_images = 2000
 
-    dataset_path = '/data2/DATA_justin/stanford_dataset'
+    dataset_path = '/home/justin/Data/Stanford'
     #dataset_path = '/Users/justinbutler/Desktop/StanfordDataset'
     destination_folder_name = 'sdd'
     destination_path = os.path.join(dataset_path, destination_folder_name)
